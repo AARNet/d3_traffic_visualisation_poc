@@ -1,0 +1,23 @@
+.idea/
+aggregated_netflow.csv
+research_traffic.sqlite
+research_visulisation.tar
+netflow/
+
+tmp
+data/
+db/
+
+private_asnums.csv
+/nginx.server.whitelist
+
+#Editor Swaps
+**/*.swp
+**/*.swo
+
+asn_data.csv
+
+.idea/
+
+institutions.csv
+matrix.json

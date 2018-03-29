@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html>
+<meta charset="utf-8">
+<head>
+    <title>AARNet SX-Transport Link Data Analysis</title>
+    <style>
+    #circle circle {
+      fill: none;
+      pointer-events: all;
+    }
+
+    .group path {
+      fill-opacity: .5;
+    }
+
+    path.chord {
+      stroke: #000;
+      stroke-width: .25px;
+    }
+
+    #circle:hover path.fade {
+      display: none;
+    }
+    </style>
+</head>
+<body>
+
+<h1>AARNet Research Traffic Over the SX-Transport Link</h1>
+
+<p>The thickness of links between institutions encodes the relative size of traffic between two institutions: thicker links represent larger traffic volume.
+In the interests of clarity, aggregate traffic patterns of less than 100Gb between institutions have been filtered out.
+
+<p>Links are directed: Arcs are coloured by country or continental region.And thanks to Brett & Peter for feedback.
+    <aside>Mouseover to focus on traffic to or from a single institution.</aside>
+</p>
+<p>
+    Built with <a href="http://d3js.org/">D3</a>.
+</p>
+
+<script src="http://d3js.org/d3.v3.min.js" charset="utf-8"></script>
+<script src="http://d3js.org/queue.v1.min.js"></script>
+<script>
+
+// TODO - Should build an AARNet colour pallette for chords
+var fill = d3.scale.category20c();
+
+var width = 1024, //720,
+    height = 1024, //720,
+    outerRadius = Math.min(width, height) / 2 - 200,
+    innerRadius = outerRadius - 24;
+
+var format1dp = d3.format(".1f");
+
+var gigaBytes = function(x) { return format1dp( x/1000000000 ) + "GB"; };
+var teraBytes = function(x) { return format1dp( x/1000000000000 ) + "TB"; };
+
+var arc = d3.svg.arc()
+    .innerRadius(innerRadius)
+    .outerRadius(outerRadius);
+
+var layout = d3.layout.chord()
+    .padding(.04)
+    .sortSubgroups(d3.descending)
+    .sortChords(d3.ascending);
+
+var path = d3.svg.chord()
+    .radius(innerRadius);
+
+var svg = d3.select("body").append("svg")
+    .attr("width", width)
+    .attr("height", height)
+  .append("g")
+    .attr("id", "circle")
+    .attr("transform", "translate(" + width / 2 + "," + height / 2 + ")");
+
+svg.append("circle")
+    .attr("r", outerRadius);
+
+queue()
+    .defer(d3.csv, "institutions.csv")
+    .defer(d3.json, "matrix.json")
+    .await(ready);
+
+
+function uni_name(name) {
+  return name.substring(3);
+}
+
+function country_code(name) {
+  return name.substring(0,2)
+}
+
+// Colours from AARNet brand guidelines
+var aarnet_color = {
+    // primary pallette
+    orange: '#F7931D',
+    grey: '#898b8e',
+    black: '#000000',
+    // secondary pallette
+    sky: '#74D0F6',
+    violet: '#887EBB',
+    stormy_sea: '#164F62',
+    moss: '#7BAD91',
+    shell: '#EFE1D6',
+    dark_grey: '#B9B9B9',
+    light_grey: '#F7F7F7'
+};
+
+var country_colours_map = {
+    au: aarnet_color.orange,
+    nz: aarnet_color.moss,
+    us: aarnet_color.black,
+    ca: aarnet_color.moss,
+    jp: aarnet_color.violet,
+    ch: aarnet_color.sky,
+    it: aarnet_color.sky,
+    nl: aarnet_color.sky,
+    se: aarnet_color.sky,
+    gb: aarnet_color.sky,
+    de: aarnet_color.sky,
+    fr: aarnet_color.sky,
+    dk: aarnet_color.sky,
+    pl: aarnet_color.sky,
+    in: aarnet_color.shell,
+    za: aarnet_color.stormy_sea,
+    zz: aarnet_color.dark_grey
+};
+
+function country_colour(country) {
+  var default_colour = aarnet_color.dark_grey;
+  if(country in country_colours_map) {
+    return country_colours_map[country];
+  }
+  return default_colour;
+}
+
+
+function ready(error, cities, matrix) {
+  if (error) throw error;
+
+  //console.log("Cities object");
+  //console.log(cities);
+
+  // Compute the chord layout.
+  layout.matrix(matrix);
+
+  // Add a group per neighborhood.
+  var group = svg.selectAll(".group")
+      .data(layout.groups)
+    .enter().append("g")
+      .attr("class", "group")
+      .on("mouseover", mouseover);
+
+  // Add a mouseover title.
+  group.append("title").text(function(d, i) {
+    return cities[i].name + ": " + teraBytes(d.value) + " of source traffic";
+  });
+
+  // Add the group arc.
+  var groupPath = group.append("path")
+      .attr("id", function(d, i) { return "group" + i; })
+      .attr("d", arc)
+      .style("fill", function(d, i) { return d3.rgb(country_colour(country_code(cities[i].name))); }); // cities[i].color; });
+
+
+  group.append("text")
+      .each(function(d) { d.angle = (d.startAngle + d.endAngle) / 2; })
+      .attr("dy", ".35em")
+      .attr("transform", function(d) {
+        return "rotate(" + (d.angle * 180 / Math.PI - 90) + ")"
+            + "translate(" + (innerRadius + 26) + ")"
+            + (d.angle > Math.PI ? "rotate(180)" : "");
+      })
+      .style("text-anchor", function(d) { return d.angle > Math.PI ? "end" : null; })
+      .text(function(d, i) { return uni_name(cities[i].name); });
+
+  // Add the chords.
+  var chord = svg.selectAll(".chord")
+      .data(layout.chords)
+    .enter().append("path")
+      .attr("class", "chord")
+      .style("fill", function(d) { return d3.rgb(fill(d.source.index)); }) //cities[d.source.index].color; })
+      .attr("d", path);
+
+  // Add an elaborate mouseover title for each chord.
+  chord.append("title").text(function(d) {
+    return uni_name(cities[d.source.index].name)
+        + " → " + uni_name(cities[d.target.index].name)
+        + ": " + teraBytes(d.source.value)
+        + "\n" + uni_name(cities[d.target.index].name)
+        + " → " + uni_name(cities[d.source.index].name)
+        + ": " + teraBytes(d.target.value);
+  });
+
+
+  function mouseover(d, i) {
+    chord.classed("fade", function(p) {
+      return p.source.index != i
+          && p.target.index != i;
+    });
+  }
+}
+
+</script>
+
+
+<footer>
+  <aside>Sept 2017</aside>
+  <a href="../" rel="author">HB @ AARNet</a>
+</footer>
+
+
+  <script>
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','https://www.google-analytics.com/analytics.js','ga');
+
+  ga('create', 'UA-105843443-1', 'auto');
+  ga('send', 'pageview');
+
+</script>
+
+</body>
+</html>

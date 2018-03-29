@@ -1,0 +1,7 @@
+.git
+.idea
+netflow/*/*/*
+netflow/*/*
+netflow/*
+tmp/*
+data/*
