@@ -7,23 +7,23 @@ The D3.js visualisation code is heavily based on the [example Chord Diagrams fro
 
 ![Archictectural Overview Diagram](./architectural_overview.png "Architectural Overview")
 
-As it's input it takes
+As it's input it takes:
 1. Netflow records stored in nfcapd files
 2. Mapping for Autonomous System from Numbers to Names
 
-As a process it
+As a process it:
 1. Filters by research looking flows
 2. Aggregates traffic by source and destination Autonomous Systems
 3. Formats the data in a format easily used by D3js
 
 As an output it generates:
-1. Pretty diagrams showing relationships between R&E institutions
+1. Chord diagrams showing the traffic relationships between institutions
 2. Underlying data in JSON file.
 
 
 ### Processing data 
 1. The data for Autonomous System (AS) Numbers and names comes from two csv files:
-    * autnums.csv: which is included here derived from public BPG data
+    * autnums.csv: which is included here derived from public BGP data
     * private_asnums.csv: which is not included here and in which you can your private asn data
 2. The system puts some limits around how many institutions are displayed on the chord diagram.
 Currently that is limited to ~50 with a everything else captured in a default "All Other" bucket.
@@ -40,8 +40,8 @@ You can edit this in nfdump_aggregation_to_research_traffic.py
 ```
 $ ./go_all.sh 201802 my-router-a my-router-b my-router-c
 ```
-OR
-6. run the go script to process a particular day
+
+6. OR run the go script to process a particular day
 ```
 $ ./go.sh 20180205 my-router-a my-router-b
 Generating list of research related ASNs ...
